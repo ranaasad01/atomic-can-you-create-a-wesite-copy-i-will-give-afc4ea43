@@ -1,9 +1,403 @@
+"use client";
+
+import { useState } from "react";
 export const dynamic = "force-dynamic";
+
+const INITIAL_TASKS = [
+  { id: 1, title: "Fix leaking kitchen pipe", location: "DHA, Lahore", budget: "Rs 1,500", time: "2 hours ago", offers: 3, icon: "🔧" },
+  { id: 2, title: "Create a logo for my bakery", location: "Remote", budget: "Rs 3,000", time: "5 hours ago", offers: 7, icon: "🎨" },
+  { id: 3, title: "Move furniture to new apartment", location: "Gulshan, Karachi", budget: "Rs 5,000", time: "1 day ago", offers: 2, icon: "🚚" },
+  { id: 4, title: "Teach my son Maths (Grade 8)", location: "F-10, Islamabad", budget: "Rs 2,000/session", time: "3 hours ago", offers: 5, icon: "📚" },
+];
+
+const CATEGORIES = [
+  { icon: "🔧", label: "Home Repairs" },
+  { icon: "🧹", label: "Cleaning" },
+  { icon: "🚚", label: "Delivery & Moving" },
+  { icon: "💻", label: "IT & Tech" },
+  { icon: "📚", label: "Tutoring" },
+  { icon: "🎨", label: "Design & Creative" },
+  { icon: "🌿", label: "Gardening" },
+  { icon: "🍳", label: "Cooking & Catering" },
+  { icon: "📷", label: "Photography" },
+  { icon: "🔌", label: "Electrical Work" },
+];
+
+const CATEGORY_ICONS: Record<string, string> = {
+  "Home Repairs": "🔧",
+  "Cleaning": "🧹",
+  "Delivery & Moving": "🚚",
+  "IT & Tech": "💻",
+  "Tutoring": "📚",
+  "Design & Creative": "🎨",
+  "Gardening": "🌿",
+  "Cooking & Catering": "🍳",
+  "Photography": "📷",
+  "Electrical Work": "🔌",
+  "Other": "📋",
+};
+
 export default function Page() {
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState<number | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<"login" | "signup" | null>(null);
+  const [showTaskerModal, setShowTaskerModal] = useState(false);
+  const [heroSearch, setHeroSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Post Task Form
+  const [postForm, setPostForm] = useState({
+    title: "",
+    location: "",
+    budget: "",
+    category: "Other",
+    description: "",
+  });
+
+  // Offer Form
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerNote, setOfferNote] = useState("");
+
+  // Auth Form
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+
+  // Tasker Form
+  const [taskerForm, setTaskerForm] = useState({ name: "", skill: "", city: "", phone: "" });
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handlePostTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!postForm.title.trim() || !postForm.location.trim() || !postForm.budget.trim()) return;
+    const newTask = {
+      id: Date.now(),
+      title: postForm.title,
+      location: postForm.location,
+      budget: postForm.budget.startsWith("Rs") ? postForm.budget : `Rs ${postForm.budget}`,
+      time: "Just now",
+      offers: 0,
+      icon: CATEGORY_ICONS[postForm.category] || "📋",
+    };
+    setTasks([newTask, ...tasks]);
+    setPostForm({ title: "", location: "", budget: "", category: "Other", description: "" });
+    setShowPostModal(false);
+    showToast("✅ Task posted successfully!");
+  };
+
+  const handleMakeOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!offerAmount.trim()) return;
+    setTasks(tasks.map((t) =>
+      t.id === showOfferModal ? { ...t, offers: t.offers + 1 } : t
+    ));
+    setOfferAmount("");
+    setOfferNote("");
+    setShowOfferModal(null);
+    showToast("🎉 Offer submitted successfully!");
+  };
+
+  const handleAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    const action = showAuthModal === "login" ? "Logged in" : "Account created";
+    setAuthForm({ name: "", email: "", password: "" });
+    setShowAuthModal(null);
+    showToast(`✅ ${action} successfully!`);
+  };
+
+  const handleTaskerSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskerForm.name.trim() || !taskerForm.skill.trim()) return;
+    setTaskerForm({ name: "", skill: "", city: "", phone: "" });
+    setShowTaskerModal(false);
+    showToast("🎉 You're now registered as a Tasker!");
+  };
+
+  const handleHeroPost = () => {
+    if (heroSearch.trim()) {
+      setPostForm({ ...postForm, title: heroSearch });
+      setHeroSearch("");
+    }
+    setShowPostModal(true);
+  };
+
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = filterCategory === "All" || t.icon === CATEGORY_ICONS[filterCategory];
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <main className="min-h-screen bg-white font-sans">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-5 right-5 z-[100] bg-gray-900 text-white text-sm px-5 py-3 rounded-2xl shadow-lg animate-pulse">
+          {toast}
+        </div>
+      )}
+
+      {/* Post Task Modal */}
+      {showPostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Post a Task</h2>
+              <button onClick={() => setShowPostModal(false)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+            </div>
+            <form onSubmit={handlePostTask} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Task Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Fix my kitchen sink"
+                  value={postForm.title}
+                  onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Category</label>
+                <select
+                  value={postForm.category}
+                  onChange={(e) => setPostForm({ ...postForm, category: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                >
+                  {[...CATEGORIES.map((c) => c.label), "Other"].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Location *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. DHA, Lahore or Remote"
+                  value={postForm.location}
+                  onChange={(e) => setPostForm({ ...postForm, location: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Budget *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2000 or 500/hour"
+                  value={postForm.budget}
+                  onChange={(e) => setPostForm({ ...postForm, budget: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Description (optional)</label>
+                <textarea
+                  placeholder="Describe your task in more detail..."
+                  value={postForm.description}
+                  onChange={(e) => setPostForm({ ...postForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white font-bold py-3 rounded-full hover:bg-green-700 transition text-sm"
+              >
+                Post Task
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Make Offer Modal */}
+      {showOfferModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Make an Offer</h2>
+              <button onClick={() => setShowOfferModal(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Task: <span className="font-semibold text-gray-700">{tasks.find((t) => t.id === showOfferModal)?.title}</span>
+            </p>
+            <form onSubmit={handleMakeOffer} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Your Offer Amount (Rs) *</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 1500"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Note (optional)</label>
+                <textarea
+                  placeholder="Tell the customer why you're the best fit..."
+                  value={offerNote}
+                  onChange={(e) => setOfferNote(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white font-bold py-3 rounded-full hover:bg-green-700 transition text-sm"
+              >
+                Submit Offer
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">
+                {showAuthModal === "login" ? "Log In" : "Create Account"}
+              </h2>
+              <button onClick={() => setShowAuthModal(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+            </div>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {showAuthModal === "signup" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Your full name"
+                    value={authForm.name}
+                    onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                    required
+                  />
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Email *</label>
+                <input
+                  type="email"
+                  placeholder="you@email.com"
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Password *</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white font-bold py-3 rounded-full hover:bg-green-700 transition text-sm"
+              >
+                {showAuthModal === "login" ? "Log In" : "Sign Up"}
+              </button>
+              <p className="text-xs text-center text-gray-500">
+                {showAuthModal === "login" ? (
+                  <>Don't have an account?{" "}
+                    <button type="button" onClick={() => setShowAuthModal("signup")} className="text-green-600 font-semibold hover:underline">Sign Up</button>
+                  </>
+                ) : (
+                  <>Already have an account?{" "}
+                    <button type="button" onClick={() => setShowAuthModal("login")} className="text-green-600 font-semibold hover:underline">Log In</button>
+                  </>
+                )}
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Become a Tasker Modal */}
+      {showTaskerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Become a Tasker</h2>
+              <button onClick={() => setShowTaskerModal(false)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+            </div>
+            <form onSubmit={handleTaskerSignup} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="Your full name"
+                  value={taskerForm.name}
+                  onChange={(e) => setTaskerForm({ ...taskerForm, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Your Skill / Service *</label>
+                <select
+                  value={taskerForm.skill}
+                  onChange={(e) => setTaskerForm({ ...taskerForm, skill: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                  required
+                >
+                  <option value="">Select a skill</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.label} value={c.label}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">City</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Lahore"
+                  value={taskerForm.city}
+                  onChange={(e) => setTaskerForm({ ...taskerForm, city: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="03XX-XXXXXXX"
+                  value={taskerForm.phone}
+                  onChange={(e) => setTaskerForm({ ...taskerForm, phone: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white font-bold py-3 rounded-full hover:bg-green-700 transition text-sm"
+              >
+                Register as Tasker
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Navbar */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
+      <nav className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-extrabold text-green-600">Kaam</span>
@@ -11,14 +405,14 @@ export default function Page() {
             <span className="ml-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Pakistan</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <a href="#" className="hover:text-green-600 transition">Browse Tasks</a>
-            <a href="#" className="hover:text-green-600 transition">How It Works</a>
-            <a href="#" className="hover:text-green-600 transition">Categories</a>
-            <a href="#" className="hover:text-green-600 transition">Become a Tasker</a>
+            <button onClick={() => { document.getElementById("browse-tasks")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-green-600 transition">Browse Tasks</button>
+            <button onClick={() => { document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-green-600 transition">How It Works</button>
+            <button onClick={() => { document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-green-600 transition">Categories</button>
+            <button onClick={() => setShowTaskerModal(true)} className="hover:text-green-600 transition">Become a Tasker</button>
           </div>
           <div className="flex items-center gap-3">
-            <button className="text-sm font-medium text-gray-700 hover:text-green-600 transition px-3 py-1.5">Log In</button>
-            <button className="text-sm font-semibold bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition">Sign Up</button>
+            <button onClick={() => setShowAuthModal("login")} className="text-sm font-medium text-gray-700 hover:text-green-600 transition px-3 py-1.5">Log In</button>
+            <button onClick={() => setShowAuthModal("signup")} className="text-sm font-semibold bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition">Sign Up</button>
           </div>
         </div>
       </nav>
@@ -36,9 +430,15 @@ export default function Page() {
             <input
               type="text"
               placeholder="What do you need help with?"
+              value={heroSearch}
+              onChange={(e) => setHeroSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleHeroPost()}
               className="flex-1 border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
             />
-            <button className="bg-green-600 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-green-700 transition">
+            <button
+              onClick={handleHeroPost}
+              className="bg-green-600 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-green-700 transition"
+            >
               Post a Task
             </button>
           </div>
@@ -65,25 +465,18 @@ export default function Page() {
       </section>
 
       {/* Categories */}
-      <section className="py-16 px-4 bg-white">
+      <section id="categories" className="py-16 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Popular Categories</h2>
           <p className="text-center text-gray-500 text-sm mb-10">Find help for any kind of task</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {[
-              { icon: "🔧", label: "Home Repairs" },
-              { icon: "🧹", label: "Cleaning" },
-              { icon: "🚚", label: "Delivery & Moving" },
-              { icon: "💻", label: "IT & Tech" },
-              { icon: "📚", label: "Tutoring" },
-              { icon: "🎨", label: "Design & Creative" },
-              { icon: "🌿", label: "Gardening" },
-              { icon: "🍳", label: "Cooking & Catering" },
-              { icon: "📷", label: "Photography" },
-              { icon: "🔌", label: "Electrical Work" },
-            ].map((cat) => (
+            {CATEGORIES.map((cat) => (
               <div
                 key={cat.label}
+                onClick={() => {
+                  setFilterCategory(cat.label);
+                  document.getElementById("browse-tasks")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="flex flex-col items-center justify-center gap-2 bg-gray-50 border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-green-300 cursor-pointer transition"
               >
                 <span className="text-3xl">{cat.icon}</span>
@@ -95,7 +488,7 @@ export default function Page() {
       </section>
 
       {/* How It Works */}
-      <section className="py-16 px-4 bg-gray-50">
+      <section id="how-it-works" className="py-16 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">How It Works</h2>
           <p className="text-center text-gray-500 text-sm mb-12">Three simple steps to get your task done</p>
@@ -106,18 +499,24 @@ export default function Page() {
                 title: "Post Your Task",
                 desc: "Describe what you need done, when, and your budget. It's free and takes less than 2 minutes.",
                 icon: "📝",
+                action: () => setShowPostModal(true),
+                actionLabel: "Post a Task",
               },
               {
                 step: "2",
                 title: "Get Offers",
                 desc: "Verified local Taskers will send you their best offers. Compare profiles, reviews and prices.",
                 icon: "📬",
+                action: null,
+                actionLabel: null,
               },
               {
                 step: "3",
                 title: "Get It Done",
                 desc: "Choose your Tasker, chat to confirm details, and pay securely after the job is complete.",
                 icon: "✅",
+                action: null,
+                actionLabel: null,
               },
             ].map((item) => (
               <div key={item.step} className="bg-white rounded-2xl p-6 shadow-sm text-center border border-gray-100">
@@ -126,7 +525,15 @@ export default function Page() {
                   {item.step}
                 </div>
                 <h3 className="font-bold text-gray-800 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-500">{item.desc}</p>
+                <p className="text-sm text-gray-500 mb-3">{item.desc}</p>
+                {item.action && (
+                  <button
+                    onClick={item.action}
+                    className="text-sm text-green-600 border border-green-300 rounded-full px-4 py-1.5 hover:bg-green-50 transition font-medium"
+                  >
+                    {item.actionLabel}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -156,144 +563,4 @@ export default function Page() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-yellow-500 text-sm mb-1">
-                  {"★".repeat(Math.floor(tasker.rating))}
-                  <span className="text-gray-600 text-xs ml-1">{tasker.rating}</span>
-                </div>
-                <p className="text-xs text-gray-500">{tasker.jobs} tasks · {tasker.city}</p>
-                <button className="mt-3 w-full text-sm text-green-600 border border-green-300 rounded-full py-1.5 hover:bg-green-50 transition font-medium">
-                  View Profile
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Tasks */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Recent Tasks Posted</h2>
-          <p className="text-center text-gray-500 text-sm mb-10">Jump in and offer your skills</p>
-          <div className="space-y-4">
-            {[
-              { title: "Fix leaking kitchen pipe", location: "DHA, Lahore", budget: "Rs 1,500", time: "2 hours ago", offers: 3, icon: "🔧" },
-              { title: "Create a logo for my bakery", location: "Remote", budget: "Rs 3,000", time: "5 hours ago", offers: 7, icon: "🎨" },
-              { title: "Move furniture to new apartment", location: "Gulshan, Karachi", budget: "Rs 5,000", time: "1 day ago", offers: 2, icon: "🚚" },
-              { title: "Teach my son Maths (Grade 8)", location: "F-10, Islamabad", budget: "Rs 2,000/session", time: "3 hours ago", offers: 5, icon: "📚" },
-            ].map((task) => (
-              <div key={task.title} className="bg-white border border-gray-100 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md transition">
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl">{task.icon}</span>
-                  <div>
-                    <p className="font-semibold text-gray-800 text-sm">{task.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">📍 {task.location} · {task.time}</p>
-                  </div>
-                </div>
-                <div className="text-right ml-4 shrink-0">
-                  <p className="text-green-600 font-bold text-sm">{task.budget}</p>
-                  <p className="text-xs text-gray-400">{task.offers} offers</p>
-                  <button className="mt-2 text-xs bg-green-600 text-white px-3 py-1.5 rounded-full hover:bg-green-700 transition">
-                    Make Offer
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">What People Are Saying</h2>
-          <p className="text-center text-gray-500 text-sm mb-10">Loved by thousands across Pakistan</p>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Hamza Iqbal",
-                city: "Lahore",
-                quote: "Found a great plumber within 30 minutes. Highly recommend KaamKaro to everyone!",
-                rating: 5,
-              },
-              {
-                name: "Amna Siddiqui",
-                city: "Karachi",
-                quote: "As a freelance designer, KaamKaro has given me consistent work. Amazing platform!",
-                rating: 5,
-              },
-              {
-                name: "Bilal Chaudhry",
-                city: "Islamabad",
-                quote: "Super easy to post a task. Got 5 offers in an hour and hired the best one seamlessly.",
-                rating: 4,
-              },
-            ].map((t) => (
-              <div key={t.name} className="bg-gray-50 border border-gray-100 rounded-2xl p-6 shadow-sm">
-                <div className="text-yellow-500 text-sm mb-2">{"★".repeat(t.rating)}</div>
-                <p className="text-gray-600 text-sm italic mb-4">"{t.quote}"</p>
-                <p className="text-sm font-semibold text-gray-800">{t.name}</p>
-                <p className="text-xs text-gray-400">{t.city}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Banner */}
-      <section className="bg-green-600 py-16 px-4 text-center text-white">
-        <h2 className="text-3xl font-extrabold mb-3">Ready to get things done?</h2>
-        <p className="text-green-100 text-sm mb-6 max-w-xl mx-auto">
-          Whether you need help or want to earn money using your skills — KaamKaro is Pakistan's #1 task marketplace.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button className="bg-white text-green-700 font-bold px-8 py-3 rounded-full hover:bg-green-50 transition text-sm">
-            Post a Task
-          </button>
-          <button className="border-2 border-white text-white font-bold px-8 py-3 rounded-full hover:bg-green-700 transition text-sm">
-            Become a Tasker
-          </button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
-        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <p className="text-white font-extrabold text-lg mb-2">
-              <span className="text-green-400">Kaam</span>Karo
-            </p>
-            <p className="text-sm">Pakistan's trusted marketplace for local tasks and services.</p>
-          </div>
-          <div>
-            <p className="text-white font-semibold mb-3 text-sm">For Customers</p>
-            <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-green-400 transition">Post a Task</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Browse Taskers</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">How It Works</a></li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-white font-semibold mb-3 text-sm">For Taskers</p>
-            <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-green-400 transition">Sign Up as Tasker</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Browse Tasks</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Tasker Insurance</a></li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-white font-semibold mb-3 text-sm">Company</p>
-            <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-green-400 transition">About Us</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-green-400 transition">Contact Us</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} KaamKaro Pakistan. All rights reserved.
-        </div>
-      </footer>
-    </main>
-  );
-}
+                  {"★".repeat(Math.floor(tasker.
